@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+	<html>
+	<head>
+		<style>
+    		html, body {
+        		overflow: hidden;
+        		width   : 100%;
+        		height  : 100%;
+        		margin  : 0;
+        		padding : 0;
+   			}
+
+    		#renderCanvas {
+        		width   : 100%;
+        		height  : 100%;
+        		touch-action: none;
+    		}
+		</style>
+			<meta charset="UTF-8">
+			<title>Week 1</title>
+			<script type="text/javascript" src="babylon.custom.js"></script>
+			<script src="babylon.objFileLoader.js"></script>
+			<script src="cannon.js"></script>		
+			<link rel="stylesheet" type="text/css" href="style_canvas.css"/>
+	</head>
+
+	<body>
+		<div style="font-size: 30px" id="score"><script>
+			function checkScore(){
+				if(scorePlayer1 == 111){
+					alert("Player 1 Won.");
+					localStorage.clear()
+					location.reload();
+				}
+				else if(scorePlayer2 == 111){
+					alert("Player 2 Won.");
+					localStorage.clear()
+					location.reload();
+				}
+			}
+			function updateScore(){
+				checkScore();
+				location.reload();
+			}
+			function scoreInitial(){
+				scorePlayer1 = localStorage.getItem("score1");
+				scorePlayer2 = localStorage.getItem("score2");
+				document.getElementById('score').innerHTML = "Score: " + scorePlayer1 + " - " + scorePlayer2	
+				checkScore();
+			}
+		</script></div>
+		<script>
+			var scorePlayer1 = 0;
+			var scorePlayer2 = 0;
+			scoreInitial();
+		</script>
+		<br>
+		<canvas id="renderCanvas"></canvas>
+		<script>
+			var canvas = document.getElementById('renderCanvas');
+			var engine = new BABYLON.Engine(canvas, true);
+
+			var createScene = function(){
+				BABYLON.OBJFileLoader.OPTIMIZE_WITH_UV = true;
+
+				var scene = new BABYLON.Scene(engine);
+				//physics
+				scene.enablePhysics();
+
+				var light = new BABYLON.HemisphericLight('light1', new BABYLON.Vector3(0,1,0), scene);
+
+				//ground
+				var ground = BABYLON.MeshBuilder.CreateGround('ground1', {height:100, width:100}, scene);
+				var groundMaterial = new BABYLON.StandardMaterial("groundMat", scene);
+				groundMaterial.diffuseTexture = new BABYLON.Texture("texture/grass.jpg", scene);
+				groundMaterial.diffuseTexture.uScale = 10;
+				groundMaterial.diffuseTexture.vScale = 10;
+				ground.position.y = 0;
+				ground.position.x = 0;
+				ground.position.z = 0;
+				ground.material = groundMaterial;
+
+
+				var music = new BABYLON.Sound("Music", "sounds/ambient.wav", scene, null, { loop: true, autoplay: true });
+				var whistle = new BABYLON.Sound("Music", "sounds/whistle.wav", scene, null, { loop: false, autoplay: true });
+
+				//walls
+				var wallMaterial = new BABYLON.StandardMaterial("wallMat", scene);
+				wallMaterial.diffuseTexture = new BABYLON.Texture("texture/fence.png", scene);
+				wallMaterial.diffuseTexture.uScale = 10;
+				wallMaterial.diffuseTexture.vScale = 10;
+
+				var wallFront = BABYLON.MeshBuilder.CreateBox("wallfront", {height: 4, width: 100, depth:3}, scene);
+				wallFront.position.y = 1;
+				wallFront.position.z = 49;
+				wallFront.material = wallMaterial;
+
+				var wallBack = BABYLON.MeshBuilder.CreateBox("wallback", {height: 4, width: 100, depth:3}, scene);
+				wallBack.position.y = 1;
+				wallBack.position.z = -49;
+				wallBack.material = wallMaterial;
+
+				var wallRight = BABYLON.MeshBuilder.CreateBox("wallright", {height: 4, width: 100, depth:3}, scene);
+				wallRight.position.y = 1;
+				wallRight.rotation.y = Math.PI/2;
+				wallRight.position.x = 49;
+				wallRight.material = wallMaterial;
+
+				var wallLeft = BABYLON.MeshBuilder.CreateBox("wallleft", {height: 4, width: 100, depth:3}, scene);
+				wallLeft.position.y = 1;
+				wallLeft.rotation.y = Math.PI/2;
+				wallLeft.position.x = -49;
+				wallLeft.material = wallMaterial;
+
+				//ball
+				var ball = BABYLON.MeshBuilder.CreateSphere("ball", {diameter: 3.5, diameterX: 3.5}, scene);
+				var ballMaterial = new BABYLON.StandardMaterial("ballMat", scene);
+				//ball settings
+				ball.position.y = 2;
+				ballMaterial.diffuseTexture = new BABYLON.Texture("texture/ball.png", scene);
+				ball.material = ballMaterial;
+
+				//goal
+				var goal = new BABYLON.Mesh.CreateBox("goal", 2.0, scene);
+					goal.isVisible = false;
+					goal.position.y = 1;
+					goal.position.z = 40;
+					goal.position.x = 0;
+
+				var goal2 = new BABYLON.Mesh.CreateBox("goal", 2.0, scene);
+					goal2.isVisible = false;
+					goal2.position.y = 1;
+					goal2.position.z = -40;
+					goal2.position.x = 0;
+					goal2.rotation.y = (Math.PI*2)/2
+			
+					BABYLON.SceneLoader.ImportMesh("", "", "goal.babylon", scene, 
+							function(newMeshes){
+								for(i = 0; i < newMeshes.length; i++){
+									newMeshes[i].parent = goal;
+								}
+								goal.physicsImpostor = new BABYLON.PhysicsImpostor(goal, BABYLON.PhysicsImpostor.BoxImpostor, {mass : 10000, restitution : 0.9, friction : 1 }, scene);
+								ball.physicsImpostor.registerOnPhysicsCollide(goal.physicsImpostor,
+		 							function(main,collided){
+		 								scorePlayer1 = scorePlayer1 + 1;
+		 								console.log(scorePlayer1);
+		 								localStorage.setItem("score1", scorePlayer1);
+									    updateScore();
+									});
+							});
+					BABYLON.SceneLoader.ImportMesh("", "", "goal.babylon", scene, 
+							function(newMeshes){
+								for(i = 0; i < newMeshes.length; i++){
+									newMeshes[i].parent = goal2;
+								}
+								goal2.physicsImpostor = new BABYLON.PhysicsImpostor(goal2, BABYLON.PhysicsImpostor.BoxImpostor, {mass : 10000, restitution : 0.9, friction : 1 }, scene);
+								ball.physicsImpostor.registerOnPhysicsCollide(goal2.physicsImpostor,
+		 							function(main,collided){
+		 								scorePlayer2 = scorePlayer2 + 1
+		 								console.log(scorePlayer2);
+		 								localStorage.setItem("score2", scorePlayer2);
+		 								updateScore();
+									});
+							});
+
+
+				var goalHitBox1 = BABYLON.MeshBuilder.CreateBox("goalHitBox1", {height: 20, width: 2, depth: 3}, scene);
+					goalHitBox1.position.y = 1;
+					goalHitBox1.position.z = 40;
+					goalHitBox1.position.x = 6;
+					goalHitBox1.isVisible = false;
+
+				var goalHitBox2 = BABYLON.MeshBuilder.CreateBox("goalHitBox2", {height: 20, width: 2, depth: 3}, scene);
+					goalHitBox2.position.y = 1;
+					goalHitBox2.position.z = 40;
+					goalHitBox2.position.x = -6;							
+					goalHitBox2.isVisible = false;
+
+				var goalHitBox3 = BABYLON.MeshBuilder.CreateBox("goalHitBox3", {height: 20, width: 2, depth: 3}, scene);
+					goalHitBox3.position.z = 40;	
+					goalHitBox3.rotation.z = Math.PI/2;
+					goalHitBox3.position.y = 8;
+					goalHitBox3.isVisible = false;
+
+				var goalHitBox4 = BABYLON.MeshBuilder.CreateBox("goalHitBox4", {height: 20, width: 2, depth: 3}, scene);
+					goalHitBox4.position.y = 1;
+					goalHitBox4.position.z = -40;
+					goalHitBox4.position.x = 6;
+					goalHitBox4.isVisible = false;
+
+					var goalHitBox5 = BABYLON.MeshBuilder.CreateBox("goalHitBox5", {height: 20, width: 2, depth: 3}, scene);
+					goalHitBox5.position.y = 1;				
+					goalHitBox5.position.z = -40;
+					goalHitBox5.position.x = -6;
+					goalHitBox5.isVisible = false;
+
+				var goalHitBox6 = BABYLON.MeshBuilder.CreateBox("goalHitBox6", {height: 20, width: 2, depth: 3}, scene);
+					goalHitBox6.position.z = -40;
+					goalHitBox6.rotation.z = Math.PI/2;
+					goalHitBox6.position.y = 8;
+					goalHitBox6.isVisible = false;
+
+  
+				//player
+				var player = BABYLON.MeshBuilder.CreateSphere("player", {diameter: 2}, scene);
+				var playerMaterial = new BABYLON.StandardMaterial("playerMat", scene);
+				playerMaterial.diffuseTexture = new BABYLON.Texture("texture/green.jpg", scene);
+				player.material = playerMaterial;
+				var player2 = BABYLON.MeshBuilder.CreateSphere("player2", {diameter: 2}, scene);
+				var player2Material = new BABYLON.StandardMaterial("player2Mat", scene);
+				player2Material.diffuseTexture = new BABYLON.Texture("texture/red.png", scene);
+				player2.material = player2Material;
+
+				player.position.y = 2;
+				player.position.x = 4;
+				player2.position.y = 2;
+				player2.position.x = -4;
+
+				document.addEventListener("keydown", onDocumentKeyDown, true);
+				function onDocumentKeyDown(event){
+					var KeyCode = event.which;
+
+					if(KeyCode == 83){//s
+						player2.physicsImpostor.applyImpulse(new BABYLON.Vector3(-1, 0, 0), player.getAbsolutePosition());
+					}else if(KeyCode == 87){//w
+						player2.physicsImpostor.applyImpulse(new BABYLON.Vector3(1, 0, 0), player.getAbsolutePosition());  
+					}else if(KeyCode == 68){//d
+						player2.physicsImpostor.applyImpulse(new BABYLON.Vector3(0, 0, -1), player.getAbsolutePosition());
+					}else if(KeyCode == 65){//a
+						player2.physicsImpostor.applyImpulse(new BABYLON.Vector3(0, 0, 1), player.getAbsolutePosition());
+					}else if(KeyCode == 101){//s
+						player.physicsImpostor.applyImpulse(new BABYLON.Vector3(-1, 0, 0), player2.getAbsolutePosition());
+					}else if(KeyCode == 104){//w
+						player.physicsImpostor.applyImpulse(new BABYLON.Vector3(1, 0, 0), player2.getAbsolutePosition());  
+					}else if(KeyCode == 102){//d
+						player.physicsImpostor.applyImpulse(new BABYLON.Vector3(0, 0, -1), player2.getAbsolutePosition());
+					}else if(KeyCode == 100){//a
+						player.physicsImpostor.applyImpulse(new BABYLON.Vector3(0, 0, 1), player2.getAbsolutePosition());
+					}
+				}
+
+
+				//camera settings
+				var camera = new BABYLON.ArcRotateCamera("camera", 0, 1.5, 5, new BABYLON.Vector3(8, 2, 0), scene);
+				//camera.attachControl(canvas, true);
+
+				var camera2 = new BABYLON.ArcRotateCamera("camera2", 0, 0, 10,  new BABYLON.Vector3(8, 10, 0), scene);
+				camera.lockedTarget = player;
+				camera2.lockedTarget = player2;
+
+        		scene.activeCameras.push(camera);
+				scene.activeCameras.push(camera2);
+
+				camera.setTarget(BABYLON.Vector3.Zero());
+				camera2.setTarget(BABYLON.Vector3.Zero());
+
+
+				camera.viewport = new BABYLON.Viewport(0.5, 0, 0.5, 1.0);
+				camera2.viewport = new BABYLON.Viewport(0, 0, 0.5, 1.0);
+
+
+       			camera.setPosition(new BABYLON.Vector3(0, 100, -100));
+       			camera.attachControl(canvas, true);
+
+       			camera2.setPosition(new BABYLON.Vector3(0, 100, -100));
+      			camera2.attachControl(canvas, true);
+				//enable physics for objects
+				ball.physicsImpostor = new BABYLON.PhysicsImpostor(ball, BABYLON.PhysicsImpostor.SphereImpostor, { mass: 1, restitution: 0.9 }, scene);
+				player.physicsImpostor = new BABYLON.PhysicsImpostor(player, BABYLON.PhysicsImpostor.SphereImpostor, { mass: 1, restitution: 0.9 }, scene);
+				player2.physicsImpostor = new BABYLON.PhysicsImpostor(player2, BABYLON.PhysicsImpostor.SphereImpostor, { mass: 1, restitution: 0.9 }, scene);
+				ground.physicsImpostor = new BABYLON.PhysicsImpostor(ground, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.9 }, scene);
+				wallFront.physicsImpostor = new BABYLON.PhysicsImpostor(wallFront, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.9}, scene);
+				wallBack.physicsImpostor = new BABYLON.PhysicsImpostor(wallBack, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.9}, scene);
+				wallRight.physicsImpostor = new BABYLON.PhysicsImpostor(wallRight, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.9}, scene);
+				wallLeft.physicsImpostor = new BABYLON.PhysicsImpostor(wallLeft, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.9}, scene);
+				goalHitBox1.physicsImpostor = new BABYLON.PhysicsImpostor(goalHitBox1, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.9 }, scene);
+				goalHitBox2.physicsImpostor = new BABYLON.PhysicsImpostor(goalHitBox2, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.9 }, scene);
+				goalHitBox3.physicsImpostor = new BABYLON.PhysicsImpostor(goalHitBox3, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.9 }, scene);
+				goalHitBox4.physicsImpostor = new BABYLON.PhysicsImpostor(goalHitBox4, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.9 }, scene);
+				goalHitBox5.physicsImpostor = new BABYLON.PhysicsImpostor(goalHitBox5, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.9 }, scene);
+				goalHitBox6.physicsImpostor = new BABYLON.PhysicsImpostor(goalHitBox6, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0, restitution: 0.9 }, scene);
+
+
+				//ball collide wall
+				ball.physicsImpostor.registerOnPhysicsCollide(wallFront.physicsImpostor,
+		 							function(main, collided){
+		 								var frontMusic = new BABYLON.Sound("Music", "sounds/wall.wav", scene, null, { loop: false, autoplay: true });
+		 							});
+
+				ball.physicsImpostor.registerOnPhysicsCollide(wallBack.physicsImpostor,
+		 							function(main, collided){
+		 								var backMusic = new BABYLON.Sound("Music", "sounds/wall.wav", scene, null, { loop: false, autoplay: true });
+		 							});
+
+				ball.physicsImpostor.registerOnPhysicsCollide(wallRight.physicsImpostor,
+		 							function(main, collided){
+		 								var rightMusic = new BABYLON.Sound("Music", "sounds/wall.wav", scene, null, { loop: false, autoplay: true });
+		 							});
+
+				ball.physicsImpostor.registerOnPhysicsCollide(wallLeft.physicsImpostor,
+		 							function(main, collided){
+		 								var leftMusic = new BABYLON.Sound("Music", "sounds/wall.wav", scene, null, { loop: false, autoplay: true });
+		 							});
+				//player1 w/ wall
+				player.physicsImpostor.registerOnPhysicsCollide(wallFront.physicsImpostor,
+		 							function(main, collided){
+		 								var frontMusic = new BABYLON.Sound("Music", "sounds/wall.wav", scene, null, { loop: false, autoplay: true });
+		 							});
+
+				player.physicsImpostor.registerOnPhysicsCollide(wallBack.physicsImpostor,
+		 							function(main, collided){
+		 								var backMusic = new BABYLON.Sound("Music", "sounds/wall.wav", scene, null, { loop: false, autoplay: true });
+		 							});
+
+				player.physicsImpostor.registerOnPhysicsCollide(wallRight.physicsImpostor,
+		 							function(main, collided){
+		 								var rightMusic = new BABYLON.Sound("Music", "sounds/wall.wav", scene, null, { loop: false, autoplay: true });
+		 							});
+
+				player.physicsImpostor.registerOnPhysicsCollide(wallLeft.physicsImpostor,
+		 							function(main, collided){
+		 								var leftMusic = new BABYLON.Sound("Music", "sounds/wall.wav", scene, null, { loop: false, autoplay: true });
+		 							});
+				//player2 w/ wall
+				player2.physicsImpostor.registerOnPhysicsCollide(wallFront.physicsImpostor,
+		 							function(main, collided){
+		 								var frontMusic = new BABYLON.Sound("Music", "sounds/wall.wav", scene, null, { loop: false, autoplay: true });
+		 							});
+
+				player2.physicsImpostor.registerOnPhysicsCollide(wallBack.physicsImpostor,
+		 							function(main, collided){
+		 								var backMusic = new BABYLON.Sound("Music", "sounds/wall.wav", scene, null, { loop: false, autoplay: true });
+		 							});
+
+				player2.physicsImpostor.registerOnPhysicsCollide(wallRight.physicsImpostor,
+		 							function(main, collided){
+		 								var rightMusic = new BABYLON.Sound("Music", "sounds/wall.wav", scene, null, { loop: false, autoplay: true });
+		 							});
+
+				player2.physicsImpostor.registerOnPhysicsCollide(wallLeft.physicsImpostor,
+		 							function(main, collided){
+		 								var leftMusic = new BABYLON.Sound("Music", "sounds/wall.wav", scene, null, { loop: false, autoplay: true });
+		 							});
+
+				player2.physicsImpostor.registerOnPhysicsCollide(ball.physicsImpostor,
+		 							function(main, collided){
+		 								var leftMusic = new BABYLON.Sound("Music", "sounds/kick.wav", scene, null, { loop: false, autoplay: true });
+		 							});
+
+				player.physicsImpostor.registerOnPhysicsCollide(ball.physicsImpostor,
+		 							function(main, collided){
+		 								var leftMusic = new BABYLON.Sound("Music", "sounds/kick.wav", scene, null, { loop: false, autoplay: true });
+		 							});
+
+
+
+				BABYLON.SceneLoader.ImportMesh("", "texture/", "goal.obj", scene, function (newMeshes) {
+        			// Set the target of the camera to the first imported mesh
+        			camera.target = newMeshes[0];
+    			});
+
+
+				return scene;
+			}
+  		  
+			//call scene function
+			var scene = createScene();
+			//render canvas
+			engine.runRenderLoop(function(){
+				scene.render();
+			});
+			//resize window listener
+			window.addEventListener('resize', function() {
+    			engine.resize();
+			});	
+
+
+
+  			window.addEventListener('DOMContentLoaded', function() {
+        // All the following code is entered here.
+    	});
+		</script>
+	</body>
+	</html>
